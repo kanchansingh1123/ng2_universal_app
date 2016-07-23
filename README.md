@@ -1,2 +1,5 @@
 # ng2_universal_app
-Universal App In Angular2
+Create universal app in Angular2.
+
+
+
