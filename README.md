@@ -1,5 +1,4 @@
 # ng2_universal_app
-Create universal app in Angular2.
 
 Application to share code between web and mobile application.
 
@@ -7,8 +6,14 @@ Application to share code between web and mobile application.
 
 1. Clone the app in your system.
 2. Install dependency by running following command 
+
+    
     ** npm install **
+    
 3. Launch appliction by running following command
+
+    
     ** ionic serve **
+    
 
 
