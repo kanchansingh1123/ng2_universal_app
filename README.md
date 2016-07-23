@@ -8,12 +8,12 @@ Application to share code between web and mobile application.
 2. Install dependency by running following command 
 
     
-    ** npm install **
+    **npm install**
     
 3. Launch appliction by running following command
 
     
-    ** ionic serve **
+    **ionic serve**
     
 
 
