@@ -2,8 +2,19 @@ var gulp = require('gulp'),
     gulpWatch = require('gulp-watch'),
     del = require('del'),
     runSequence = require('run-sequence'),
-    argv = process.argv;
-
+    argv = process.argv,
+	
+	/*gulp-browserify-typescript module dependency*/
+	browserify = require('browserify'),
+    watchify = require('watchify'),
+    tsify = require('tsify'),
+    pretty = require('prettysize'),
+    merge = require('lodash.merge'),
+    source = require('vinyl-source-stream'),
+    buffer = require('vinyl-buffer'),
+    sourcemaps = require('gulp-sourcemaps'),
+    uglify = require('gulp-uglify'),
+    stream = require('stream');
 
 /**
  * Ionic hooks
@@ -27,14 +38,87 @@ gulp.task('run:before', [shouldWatch ? 'watch' : 'build']);
  * changes, but you are of course welcome (and encouraged) to customize your
  * build however you see fit.
  */
-var buildBrowserify = require('ionic-gulp-browserify-typescript');
 var buildSass = require('ionic-gulp-sass-build');
-var copyHTML = require('ionic-gulp-html-copy');
+
+
 var copyFonts = require('ionic-gulp-fonts-copy');
 var copyScripts = require('ionic-gulp-scripts-copy');
 var tslint = require('ionic-gulp-tslint');
 
 var isRelease = argv.indexOf('--release') > -1;
+
+
+var isMobile = argv.indexOf('--mobile') > -1;
+
+//var copyHTML = require('ionic-gulp-html-copy');
+var copyHTML = function(options) {	
+	//options.src = options.src || 'app/**/*.html';
+	options.dest = options.dest || 'www/build';
+	
+	/*Excluding the web/mobile code*/
+	options.src = ((isMobile) ? ['app/**/*.html', '!app/web', '!app/web/**'] : ['app/**/*.html', '!app/mobile', '!app/mobile/**']);
+	
+	return gulp.src(options.src)
+		.pipe(gulp.dest(options.dest));
+}
+
+/*Default option for ionic-gulp-browserify-typescript*/
+
+var defaultOptions = {
+  watch: false,
+  src: ((isMobile) ? ['./app/app.mobile.ts', './typings/index.d.ts'] : ['./app/app.ts', './typings/index.d.ts']),
+  outputPath: 'www/build/js/',
+  outputFile: 'app.bundle.js',
+  minify: false,
+  browserifyOptions: {
+    cache: {},
+    packageCache: {},
+    debug: true
+  },
+  watchifyOptions: {},
+  tsifyOptions: {},
+  uglifyOptions: {},
+  onError: function(err){
+    console.error(err.toString());
+    this.emit('end');
+  },
+  onLog: function(log){
+    console.log((log = log.split(' '), log[0] = pretty(log[0]), log.join(' ')));
+  }
+}
+
+//var buildBrowserify = require('ionic-gulp-browserify-typescript');
+var buildBrowserify = function(options) {
+  console.log(options);
+  options = merge(defaultOptions, options);
+
+  var b = browserify(options.src, options.browserifyOptions)
+    .plugin(tsify, options.tsifyOptions);
+
+  if (options.watch) {
+    b = watchify(b, options.watchifyOptions);
+    b.on('update', bundle);
+    b.on('log', options.onLog);
+  }
+
+  return bundle();
+
+  function bundle() {
+    var debug = options.browserifyOptions.debug;
+    return b.bundle()
+      .on('error', options.onError)
+      .pipe(source(options.outputFile))
+      .pipe(buffer())
+      .pipe(debug ? sourcemaps.init({ loadMaps: true }) : noop())
+      .pipe(options.minify ? uglify(options.uglifyOptions) : noop())
+      .pipe(debug ? sourcemaps.write('./',{includeContent:true, sourceRoot:'../../../'}) : noop())
+      .pipe(gulp.dest(options.outputPath));
+  }
+
+  function noop(){
+    return new stream.PassThrough({ objectMode: true });
+  }
+}
 
 gulp.task('watch', ['clean'], function(done){
   runSequence(
@@ -59,7 +143,7 @@ gulp.task('build', ['clean'], function(done){
         uglifyOptions: {
           mangle: false
         }
-      }).on('end', done);
+      }).on('end',  done);
     }
   );
 });
